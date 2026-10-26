@@ -1,0 +1,20 @@
+{
+  "name": "commercial-automation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:login": "playwright test tests/admin/login.spec.js --project=chromium-unauthenticated",
+    "test:authenticated": "playwright test --project=chromium-authenticated",
+    "test:workflow": "playwright test --project=chromium-seller",
+    "report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "dotenv": "^18.0.8"
+  }
+}

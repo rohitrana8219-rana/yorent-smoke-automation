@@ -1,0 +1,61 @@
+const { test, expect } = require('@playwright/test');
+const { readData, saveSeller, attachRecords } = require('../../helpers/workflow-data');
+const { chooseCatalogRecord, addProductOption, saveCatalogForm } = require('../../helpers/catalog-ui');
+
+test('seller can create and retain an owned catalog product', async ({ page }, testInfo) => {
+  test.setTimeout(120000);
+  const account = readData('seller-account');
+  const admin = readData('admin-workflow');
+  expect(account.origin).toBe(testInfo.project.use.baseURL);
+  expect(admin.origin).toBe(testInfo.project.use.baseURL);
+  expect(admin.complete).toBe(true);
+  account.product = { name: `QA Seller Drill ${account.suffix}`, identifier: `QA-SDRILL-${account.suffix}` };
+  saveSeller(account);
+  try {
+    await page.goto('/seller/custom-product-form', { waitUntil: 'domcontentloaded' });
+    const decline = page.getByRole('button', { name: 'Decline', exact: true });
+    if (await decline.isVisible()) await decline.click();
+    const form = page.locator('#addProductfrm');
+    await form.locator('input[name="product_identifier"]').fill(account.product.identifier);
+    await form.locator('input[name="product_name"]').fill(account.product.name);
+    await chooseCatalogRecord(page, 'ptc_prodcat_id', admin.category);
+    await chooseCatalogRecord(page, 'product_brand_id', admin.brand);
+    await form.locator('input[name="product_model"]').fill(`SD-${account.suffix}`);
+    await form.locator('input[name="product_min_selling_price"]').fill('149.99');
+    await form.locator('select[name="ptt_taxcat_id_rent"]').selectOption(admin.taxCategory.id);
+    await form.locator('select[name="ptt_taxcat_id"]').selectOption(admin.taxCategory.id);
+    await form.locator('input[name="product_warranty"]').fill('365');
+    await form.locator('select[name="shipping_profile"]').selectOption(account.shipping.id);
+    await form.locator('input[name="product_weight"]').fill('1.8');
+    await form.locator('select[name="product_weight_unit"]').selectOption({ label: 'Kilogram' });
+    await addProductOption(page, admin.option);
+    await form.locator('input[name="product_active"]').check();
+    await saveCatalogForm(page);
+    await expect(form.locator('input[name="product_id"]')).toHaveValue(/^[1-9]\d*$/);
+    account.product.id = await form.locator('input[name="product_id"]').inputValue();
+    saveSeller(account);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(form.locator('input[name="product_name"]')).toHaveValue(account.product.name);
+    await expect(form.locator('input[name="product_identifier"]')).toHaveValue(account.product.identifier);
+    await expect(form.locator('select[name="ptc_prodcat_id"]')).toHaveValue(admin.category.id);
+    await expect(form.locator('select[name="product_brand_id"]')).toHaveValue(admin.brand.id);
+    await expect(form.locator('select[name="ptt_taxcat_id_rent"]')).toHaveValue(admin.taxCategory.id);
+    await expect(form.locator('select[name="ptt_taxcat_id"]')).toHaveValue(admin.taxCategory.id);
+    await expect(form.locator('select[name="shipping_profile"]')).toHaveValue(account.shipping.id);
+    await expect(form.locator('input[name="prod_options[]"]')).toHaveValue(admin.option.id);
+    await expect(form.locator('input[name="product_active"]')).toBeChecked();
+    await page.goto('/seller/catalog', { waitUntil: 'domcontentloaded' });
+    const search = page.locator('#frmSearchCatalogProduct');
+    await search.locator('input[name="keyword"]').fill(account.product.identifier);
+    await search.locator('input[name="btn_submit"]').click();
+    const row = page.locator('tr').filter({ has: page.getByText(account.product.name, { exact: true }) });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText(account.product.identifier);
+    await expect(row).toContainText('Active');
+    account.product.approvalStatus = (await row.locator('td').nth(4).innerText()).trim();
+    expect(['Approved', 'Un-approved']).toContain(account.product.approvalStatus);
+  } finally {
+    saveSeller(account);
+    await attachRecords(testInfo, { seller: { name: account.name, id: account.id }, product: account.product });
+  }
+});
