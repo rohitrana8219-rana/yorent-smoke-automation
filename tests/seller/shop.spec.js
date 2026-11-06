@@ -9,7 +9,7 @@ test('seller can save a shop and shipping profile', async ({ page }, testInfo) =
   expect(account.accessVerified).toBe(true);
   try {
     await test.step('Save and reload shop details', async () => {
-      await page.goto('/seller/shop', { waitUntil: 'domcontentloaded' });
+      await page.goto('/en/seller/shop', { waitUntil: 'domcontentloaded' });
       const form = page.locator('form[name="frmShop"]');
       account.shop = { name: account.business, identifier: `qa-shop-${account.suffix}`, slug: `qa-shop-${account.suffix}` };
       await form.locator('input[name="shop_identifier"]').fill(account.shop.identifier);

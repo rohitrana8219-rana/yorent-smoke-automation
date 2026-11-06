@@ -1,4 +1,6 @@
 const { expect } = require('@playwright/test');
+const { fillLocalizedName } = require('./localized-name');
+const { expectEnglishURL } = require('./public-routes');
 
 async function submitShippingForm(page, form, admin) {
   if (await form.locator('[name="btn_submit"]').count()) {
@@ -11,15 +13,26 @@ async function submitShippingForm(page, form, admin) {
 
 async function createShippingProfile(page, profile) {
   const { admin, name, rateName, cost, days } = profile;
-  const route = admin ? '/admin/shipping-profile' : '/shipping-profile';
+  const route = admin ? '/admin/shipping-profile' : '/en/shipping-profile';
   await page.goto(`${route}/form/0`, { waitUntil: 'domcontentloaded' });
   const form = page.locator('form[name="frmShippingProfile"]');
-  await form.locator('input[name="shipprofile_name[1]"]').fill(name);
+  await fillLocalizedName(form, 'shipprofile_name', name);
   await form.locator('input[name="btn_submit"]').click();
-  await expect(page).toHaveURL(new RegExp(`${route}/form/[1-9]\\d*$`));
+  if (admin) await expect(page).toHaveURL(new RegExp(`${route}/form/[1-9]\\d*$`));
+  else await expectEnglishURL(page, /^\/shipping-profile\/form\/[1-9]\d*$/);
   const id = await form.locator('input[name="shipprofile_id"]').inputValue();
   profile.id = id;
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  async function reloadProfile() {
+    // The profile HTML arrives before its shipping-zone table. Wait for that
+    // observed read request, then assert the saved rate in the rendered table.
+    const zones = page.waitForResponse(response => response.request().method() === 'POST'
+      && new URL(response.url()).pathname.endsWith(`/shipping-zones/search/${id}`));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    const response = await zones;
+    expect(response.ok()).toBe(true);
+    await response.finished();
+  }
+  await reloadProfile();
   await expect(form.locator('input[name="shipprofile_name[1]"]')).toHaveValue(name);
   const edit = page.locator(admin
     ? 'a[onclick^="addEditShipRates("]'
@@ -43,7 +56,7 @@ async function createShippingProfile(page, profile) {
   await submitShippingForm(page, languageForm, admin);
   await (await saved).finished();
   await expect(page.locator('tr').filter({ has: page.getByText(rateName, { exact: true }) })).toContainText(`$${cost}`);
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await reloadProfile();
   const row = page.locator('tr').filter({ has: page.getByText(rateName, { exact: true }) });
   await expect(row).toContainText(`$${cost}`);
   await expect(row).toContainText(`${days} (Days)`);

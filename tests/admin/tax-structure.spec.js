@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { fillLocalizedName } = require('../../helpers/localized-name');
 const { randomUUID } = require('crypto');
 
 test('admin can navigate to Tax Structure', async ({ page }, testInfo) => {
@@ -46,7 +47,7 @@ test('admin can create and persist a tax structure', async ({ page }, testInfo) 
     const taxForm = page.locator('.modal.show form#frm_fat_id_frmTaxStructure');
     await expect(taxForm).toBeVisible();
     await expect(taxForm.locator('input[name="taxstr_is_combined"]')).not.toBeChecked();
-    await taxForm.locator('input[name="taxstr_name[1]"]').fill(taxName);
+    await fillLocalizedName(taxForm, 'taxstr_name', taxName);
     submissionAttempted = true;
     await page
       .locator(

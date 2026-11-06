@@ -1,5 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { randomUUID } = require('crypto');
+const { fillLocalizedName } = require('../../helpers/localized-name');
 
 test('admin can navigate to Categories', async ({ page }, testInfo) => {
   await page.goto('/admin/home');
@@ -53,7 +54,7 @@ test('admin can create and persist a category', async ({ page }, testInfo) => {
     );
     await expect(parentCategory).not.toHaveValue('');
     await page.locator('#frmProdCategory input[name="prodcat_identifier"]').fill(categoryIdentifier);
-    await page.locator('#frmProdCategory input[name="prodcat_name[1]"]').fill(categoryName);
+    await fillLocalizedName(page.locator('#frmProdCategory'), 'prodcat_name', categoryName);
     submissionAttempted = true;
     await page.locator('#frmProdCategory input[name="btn_submit"]').click();
 

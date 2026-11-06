@@ -2,14 +2,17 @@ const fs = require('fs');
 const path = require('path');
 
 const authDir = path.join(__dirname, '..', '.auth');
+// Independent modules must not replace the complete workflow's handoff data.
+const dataDir = process.env.YORENT_EXECUTION_MODE === 'modules'
+  ? path.join(authDir, 'modules') : authDir;
 
 function writeData(name, data) {
-  fs.mkdirSync(authDir, { recursive: true });
-  fs.writeFileSync(path.join(authDir, `${name}.json`), JSON.stringify(data, null, 2));
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(path.join(dataDir, `${name}.json`), JSON.stringify(data, null, 2));
 }
 
 function readData(name) {
-  const file = path.join(authDir, `${name}.json`);
+  const file = path.join(dataDir, `${name}.json`);
   if (!fs.existsSync(file)) throw new Error(`Missing ${name} data; run its workflow dependency first.`);
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }

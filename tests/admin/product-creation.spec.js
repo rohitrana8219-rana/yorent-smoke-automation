@@ -3,6 +3,7 @@ const { randomBytes } = require('crypto');
 const { addProductOption, saveCatalogForm } = require('../../helpers/catalog-ui');
 const { createShippingProfile } = require('../../helpers/shipping-ui');
 const { writeData } = require('../../helpers/workflow-data');
+const { fillLocalizedName } = require('../../helpers/localized-name');
 
 test('admin can create a catalog product with its own category, brand and tax data', async ({ page }, testInfo) => {
   test.setTimeout(300000);
@@ -53,7 +54,7 @@ test('admin can create a catalog product with its own category, brand and tax da
         await expect(form.locator('input[name="parent_category_name"]')).toHaveValue('Root Category');
         await expect(form.locator('input[name="prodcat_parent"]')).toHaveValue('0');
         await form.locator('input[name="prodcat_identifier"]').fill(category.identifier);
-        await form.locator('input[name="prodcat_name[1]"]').fill(category.name);
+        await fillLocalizedName(form, 'prodcat_name', category.name);
         category.submitted = true;
         await form.locator('input[name="btn_submit"]').click();
         await expect(page).toHaveURL(/\/admin\/product-categories\/form\/[1-9]\d*$/);
@@ -84,7 +85,7 @@ test('admin can create a catalog product with its own category, brand and tax da
         await page.locator('a[onclick="addStructureForm(0)"]').click();
         const form = page.locator('.modal.show form#frm_fat_id_frmTaxStructure');
         await expect(form.locator('input[name="taxstr_is_combined"]')).not.toBeChecked();
-        await form.locator('input[name="taxstr_name[1]"]').fill(structure.name);
+        await fillLocalizedName(form, 'taxstr_name', structure.name);
         structure.submitted = true;
         await page.locator('button[form="frm_fat_id_frmTaxStructure"][name="btn_submit"]').click();
         await captureId(row, structure);
@@ -126,7 +127,7 @@ test('admin can create a catalog product with its own category, brand and tax da
         await page.locator('a[onclick="addOptionFormNew(0)"]').click();
         const form = page.locator('form[name="frmOptions"]');
         await form.locator('input[name="option_identifier"]').fill(option.name);
-        await form.locator('input[name="option_name1"]').fill(option.name);
+        await fillLocalizedName(form, 'option_name', option.name);
         await form.locator('select[name="option_is_separate_images"]').selectOption('0');
         await form.locator('select[name="option_is_color"]').selectOption('0');
         await form.locator('select[name="option_display_in_filter"]').selectOption('1');
@@ -136,7 +137,7 @@ test('admin can create a catalog product with its own category, brand and tax da
         option.id = await values.locator('input[name="optionvalue_option_id"]').inputValue();
         expect(option.id).toMatch(/^[1-9]\d*$/);
         await values.locator('input[name="optionvalue_identifier"]').fill(option.value);
-        await values.locator('input[name="optionvalue_name1"]').fill(option.value);
+        await fillLocalizedName(values, 'optionvalue_name', option.value);
         await values.locator('input[name="btn_submit"]').click();
         await expect(page.locator('#optionvalues')).toContainText(option.value);
       });

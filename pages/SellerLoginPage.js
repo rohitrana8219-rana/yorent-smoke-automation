@@ -7,7 +7,7 @@ class SellerLoginPage {
   }
 
   async goto() {
-    await this.page.goto('/guest-user/login-form', { waitUntil: 'domcontentloaded' });
+    await this.page.goto('/en/guest-user/login-form', { waitUntil: 'domcontentloaded' });
     await this.form.waitFor({ state: 'visible' });
     const decline = this.page.getByRole('button', { name: 'Decline', exact: true });
     if (await decline.isVisible()) await decline.click();

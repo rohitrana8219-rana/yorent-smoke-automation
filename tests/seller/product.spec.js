@@ -12,7 +12,7 @@ test('seller can create and retain an owned catalog product', async ({ page }, t
   account.product = { name: `QA Seller Drill ${account.suffix}`, identifier: `QA-SDRILL-${account.suffix}` };
   saveSeller(account);
   try {
-    await page.goto('/seller/custom-product-form', { waitUntil: 'domcontentloaded' });
+    await page.goto('/en/seller/custom-product-form', { waitUntil: 'domcontentloaded' });
     const decline = page.getByRole('button', { name: 'Decline', exact: true });
     if (await decline.isVisible()) await decline.click();
     const form = page.locator('#addProductfrm');
@@ -44,7 +44,7 @@ test('seller can create and retain an owned catalog product', async ({ page }, t
     await expect(form.locator('select[name="shipping_profile"]')).toHaveValue(account.shipping.id);
     await expect(form.locator('input[name="prod_options[]"]')).toHaveValue(admin.option.id);
     await expect(form.locator('input[name="product_active"]')).toBeChecked();
-    await page.goto('/seller/catalog', { waitUntil: 'domcontentloaded' });
+    await page.goto('/en/seller/catalog', { waitUntil: 'domcontentloaded' });
     const search = page.locator('#frmSearchCatalogProduct');
     await search.locator('input[name="keyword"]').fill(account.product.identifier);
     await search.locator('input[name="btn_submit"]').click();

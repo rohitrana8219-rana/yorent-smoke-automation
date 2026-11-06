@@ -19,7 +19,7 @@ test('seller can register and submit business details', async ({ page }, testInf
   };
   saveSeller(account);
   try {
-    await page.goto('/supplier', { waitUntil: 'domcontentloaded' });
+    await page.goto('/en/supplier', { waitUntil: 'domcontentloaded' });
     const decline = page.getByRole('button', { name: 'Decline', exact: true });
     if (await decline.isVisible()) await decline.click();
     const entry = page.locator('form[name="frmSeller"]');

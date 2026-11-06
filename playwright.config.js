@@ -36,6 +36,9 @@ module.exports = defineConfig({
     baseURL: parsedBaseURL.origin,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
+    ...(process.env.YORENT_BROWSER_WS ? {
+      connectOptions: { wsEndpoint: process.env.YORENT_BROWSER_WS },
+    } : {}),
   },
   projects: [
     {

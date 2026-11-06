@@ -1,11 +1,13 @@
 const { expect } = require('@playwright/test');
 const { randomInt } = require('crypto');
+const { fillLocalizedName } = require('./localized-name');
+const { expectEnglishURL } = require('./public-routes');
 
 async function searchInventory(page, route, title) {
-  await page.goto(route, { waitUntil: 'domcontentloaded' });
+  await page.goto(`/en${route}`, { waitUntil: 'domcontentloaded' });
   const form = page.locator('form[name="frmSearch"]');
   await form.locator('input[name="keyword"]').fill(title);
-  const result = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname.startsWith('/seller-inventories/seller-products'));
+  const result = page.waitForResponse(r => r.request().method() === 'POST' && new URL(r.url()).pathname.replace(/^\/en(?=\/)/, '').startsWith('/seller-inventories/seller-products'));
   await form.locator('input[name="btn_submit"]').click();
   await (await result).finished();
   await expect(page.locator('body')).toContainText(new RegExp(`${title}|No Records Found`));
@@ -17,6 +19,24 @@ async function selectToday(page, field) {
   await page.locator('#ui-datepicker-div .ui-datepicker-today a').click();
   await expect(field).not.toHaveValue('');
   return field.inputValue();
+}
+
+async function openScanCodes(page, rental) {
+  // Bootstrap ignores dismiss actions while its opening transition is running.
+  // Register before clicking, including when the modal is inserted by AJAX.
+  await page.evaluate(() => {
+    window.__qaScanCodesShown = new Promise(resolve => {
+      const shown = event => {
+        if (!event.target.querySelector('#savecode')) return;
+        document.removeEventListener('shown.bs.modal', shown);
+        resolve();
+      };
+      document.addEventListener('shown.bs.modal', shown);
+    });
+  });
+  await rental.getByTitle('Add Barcode And Sku', { exact: true }).click();
+  await page.evaluate(() => window.__qaScanCodesShown);
+  await page.evaluate(() => { delete window.__qaScanCodesShown; });
 }
 
 async function verifyRental(page, record, catalog, shipping) {
@@ -39,7 +59,7 @@ async function verifyRental(page, record, catalog, shipping) {
   expect(Number(await rental.getByPlaceholder('Daily Rental Price', { exact: true }).inputValue())).toBe(15);
   expect(Number(await rental.getByPlaceholder('Monthly Rental Price', { exact: true }).inputValue())).toBe(200);
   expect(Number(await rental.getByPlaceholder('Rental Stock', { exact: true }).inputValue())).toBe(3);
-  await rental.getByTitle('Add Barcode And Sku', { exact: true }).click();
+  await openScanCodes(page, rental);
   for (let i = 0; i < record.scanCodes.length; i++) {
     await expect(page.locator(`input[name="barcode_${i}"]`)).toHaveValue(record.scanCodes[i]);
   }
@@ -69,7 +89,7 @@ async function retainInventory(page, { account, catalog, option, source, previou
     await verifyRental(page, record, catalog, account.shipping);
     await page.locator('a.tabs_003').click();
   } else {
-    await page.goto(source === 'admin' ? '/seller/catalog/0' : '/seller/catalog', { waitUntil: 'domcontentloaded' });
+    await page.goto(source === 'admin' ? '/en/seller/catalog/0' : '/en/seller/catalog', { waitUntil: 'domcontentloaded' });
     const search = page.locator('#frmSearchCatalogProduct');
     await search.locator('input[name="keyword"]').fill(catalog.identifier);
     await search.locator('input[name="btn_submit"]').click();
@@ -78,7 +98,7 @@ async function retainInventory(page, { account, catalog, option, source, previou
     await expect(catalogRow).toContainText('Approved');
     await catalogRow.getByTitle('Add Inventory', { exact: true }).click();
     const rental = page.locator('form[name="frmSellerProduct"]');
-    await rental.locator('input[name="selprod_title1"]').fill(record.title);
+    await fillLocalizedName(rental, 'selprod_title', record.title, 'Inventory Data For English');
     await rental.locator('input[name="selprod_url_keyword"]').fill(`qa-${source}-${account.suffix}`);
     await rental.locator('select[name="sprodata_rental_active"]').selectOption('1');
     record.availableFrom = await selectToday(page, rental.locator('input[name="sprodata_rental_available_from"]'));
@@ -97,7 +117,7 @@ async function retainInventory(page, { account, catalog, option, source, previou
     await rental.getByPlaceholder('Daily Rental Price', { exact: true }).fill('15');
     await rental.getByPlaceholder('Monthly Rental Price', { exact: true }).fill('200');
     await rental.getByPlaceholder('Rental Stock', { exact: true }).fill('3');
-    await rental.getByTitle('Add Barcode And Sku', { exact: true }).click();
+    await openScanCodes(page, rental);
     record.scanCodes = Array.from({ length: 3 }, (_, i) => `Q${account.suffix}${source === 'admin' ? 'A' : 'S'}${i + 1}`);
     update(record);
     for (let i = 0; i < record.scanCodes.length; i++) {
@@ -131,10 +151,10 @@ async function retainInventory(page, { account, catalog, option, source, previou
     await sale.locator('input[name^="selprod_stock["]').fill('3');
     // Unlike the rental scan code, the sale SKU field requires an integer.
     await sale.locator('input[name^="selprod_sku["]').fill(record.saleSku);
-    const saved = page.waitForResponse(r => new URL(r.url()).pathname === '/seller-inventories/setup-prod-sale-details' && r.request().method() === 'POST');
+    const saved = page.waitForResponse(r => new URL(r.url()).pathname.replace(/^\/en(?=\/)/, '') === '/seller-inventories/setup-prod-sale-details' && r.request().method() === 'POST');
     await sale.locator('input[name="btn_submit"]').click();
     await (await saved).finished();
-    await expect(page).toHaveURL(new URL('/seller-inventories/products', account.origin).toString());
+    await expectEnglishURL(page, '/seller-inventories/products');
     record.phase = 'sale-saved';
     update(record);
   }

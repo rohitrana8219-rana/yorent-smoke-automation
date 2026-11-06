@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const SellerLoginPage = require('../pages/SellerLoginPage');
+const { expectEnglishURL, publicLink } = require('../helpers/public-routes');
 const { authDir, readData, saveSeller } = require('../helpers/workflow-data');
 
 test('authenticate the new seller and save separate browser state', async ({ page }, testInfo) => {
@@ -15,8 +16,8 @@ test('authenticate the new seller and save separate browser state', async ({ pag
   const login = new SellerLoginPage(page);
   await login.goto();
   await login.login(account.username, account.password);
-  await expect(page).toHaveURL(new URL('/seller', testInfo.project.use.baseURL).toString());
-  await expect(page.locator('a[href="/seller/shop"]').first()).toBeAttached();
+  await expectEnglishURL(page, '/seller');
+  await expect(publicLink(page, '/seller/shop').first()).toBeAttached();
   await page.context().storageState({ path: stateFile });
   account.accessVerified = true;
   saveSeller(account);
